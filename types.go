@@ -7,11 +7,10 @@ type Location struct {
 }
 
 type User struct {
-	ID          int64
-	Username    string
-	Birthdate   time.Time
-	Location    Location
-	VoucherUsed map[string]int
+	ID        int64
+	Username  string
+	Birthdate time.Time
+	Location  Location
 }
 
 type Merchant struct {

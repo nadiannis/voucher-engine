@@ -10,11 +10,10 @@ func main() {
 		User: User{
 			ID:        1,
 			Username:  "nadiannis",
-			Birthdate: ParseDate("2010-10-05"),
+			Birthdate: parseDate("2010-10-05"),
 			Location: Location{
 				City: "Bekasi",
 			},
-			VoucherUsed: make(map[string]int),
 		},
 		Merchant: Merchant{
 			ID:   1,
@@ -53,8 +52,8 @@ func main() {
 			MaxAmount: 200000,
 		},
 		MinPurchaseAmount: 80000,
-		StartDate:         ParseDateTime("2025-01-01 00:00:00"),
-		ExpiryDate:        ParseDateTime("2025-07-31 23:59:59"),
+		StartDate:         parseDateTime("2025-01-01 00:00:00"),
+		ExpiryDate:        parseDateTime("2025-07-31 23:59:59"),
 		UsageLimit:        3,
 		ExcludedMerchants: []int64{10, 2, 4},
 		PaymentMethods:    []string{"bank_transfer", "virtual_account", "ewallet"},
@@ -63,8 +62,8 @@ func main() {
 	engine := NewRuleEngine()
 
 	output := engine.CheckEligibility(cart1, voucher1)
-	PrintJSON(output)
+	printJSON(output)
 
 	output = engine.CalculateDiscount(cart1, voucher1)
-	PrintJSON(output)
+	printJSON(output)
 }

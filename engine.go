@@ -2,45 +2,39 @@ package main
 
 import (
 	"fmt"
-	"slices"
+	"strings"
 )
 
 type RuleEngine struct {
+	eligibilityRules []Rule
 }
 
 func NewRuleEngine() *RuleEngine {
-	return &RuleEngine{}
+	return &RuleEngine{
+		eligibilityRules: GenerateEligibilityRules(),
+	}
 }
 
 func (e *RuleEngine) CheckEligibility(cart Cart, voucher Voucher) Output {
-	output := Output{
+	facts := map[string]any{
+		"cart":          cart,
+		"voucher":       voucher,
+		"totalPurchase": calculateTotalPurchase(cart),
+	}
+
+	for _, rule := range e.eligibilityRules {
+		if !evaluateRule(rule, facts) {
+			return Output{
+				Type:  "eligibility",
+				Value: false,
+			}
+		}
+	}
+
+	return Output{
 		Type:  "eligibility",
-		Value: false,
+		Value: true,
 	}
-
-	totalPurchase := CalculateTotalPurchase(cart)
-	if totalPurchase < voucher.MinPurchaseAmount {
-		return output
-	}
-
-	if cart.CreatedAt.Before(voucher.StartDate) || cart.CreatedAt.After(voucher.ExpiryDate) {
-		return output
-	}
-
-	if cart.User.VoucherUsed[voucher.Code] >= voucher.UsageLimit {
-		return output
-	}
-
-	if slices.Contains(voucher.ExcludedMerchants, cart.Merchant.ID) {
-		return output
-	}
-
-	if !slices.Contains(voucher.PaymentMethods, cart.PaymentMethod) {
-		return output
-	}
-
-	output.Value = true
-	return output
 }
 
 func (e *RuleEngine) CalculateDiscount(cart Cart, voucher Voucher) Output {
@@ -54,7 +48,7 @@ func (e *RuleEngine) CalculateDiscount(cart Cart, voucher Voucher) Output {
 		return output
 	}
 
-	totalPurchase := CalculateTotalPurchase(cart)
+	totalPurchase := calculateTotalPurchase(cart)
 	var discount float64
 
 	switch voucher.Discount.Type {
@@ -80,4 +74,49 @@ func (e *RuleEngine) CalculateDiscount(cart Cart, voucher Voucher) Output {
 
 	output.Value = discount
 	return output
+}
+
+func evaluateRule(rule Rule, facts map[string]any) bool {
+	for _, condition := range rule.Conditions {
+		if !match(condition, facts) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func match(condition Condition, facts map[string]any) bool {
+	fieldPath := strings.Split(condition.Field, ".")
+	operand1 := getNestedValue(facts, fieldPath)
+
+	var operand2 any
+	if v, ok := condition.Value.(string); ok && strings.Contains(v, ".") {
+		refPath := strings.Split(v, ".")
+		operand2 = getNestedValue(facts, refPath)
+	} else {
+		operand2 = condition.Value
+	}
+
+	switch condition.Operator {
+	case Equal:
+		return compareEqual(operand1, operand2)
+	case NotEqual:
+		return !compareEqual(operand1, operand2)
+	case GreaterThan:
+		return compareGreaterThan(operand1, operand2)
+	case GreaterThanOrEqual:
+		return compareGreaterThanOrEqual(operand1, operand2)
+	case LessThan:
+		return compareLessThan(operand1, operand2)
+	case LessThanOrEqual:
+		return compareLessThanOrEqual(operand1, operand2)
+	case In:
+		return compareIn(operand1, operand2)
+	case NotIn:
+		return !compareIn(operand1, operand2)
+	default:
+		fmt.Println("unsupported condition operator")
+		return false
+	}
 }
