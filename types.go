@@ -46,13 +46,7 @@ type Discount struct {
 }
 
 type Voucher struct {
-	ID                int64
-	Code              string
-	Discount          Discount
-	MinPurchaseAmount float64
-	StartDate         time.Time
-	ExpiryDate        time.Time
-	UsageLimit        int
-	ExcludedMerchants []int64
-	PaymentMethods    []string
+	ID   int64
+	Code string
+	Rule Rule
 }

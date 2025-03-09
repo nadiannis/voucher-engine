@@ -39,30 +39,28 @@ func parseDateTime(datetime string) time.Time {
 	return t
 }
 
-func getNestedValue(data any, path []string) any {
-	if len(path) == 0 {
-		return data
+func compareValues(operator Operator, a, b any) bool {
+	switch operator {
+	case Equal:
+		return compareEqual(a, b)
+	case NotEqual:
+		return !compareEqual(a, b)
+	case GreaterThan:
+		return compareGreaterThan(a, b)
+	case GreaterThanOrEqual:
+		return compareGreaterThanOrEqual(a, b)
+	case LessThan:
+		return compareLessThan(a, b)
+	case LessThanOrEqual:
+		return compareLessThanOrEqual(a, b)
+	case In:
+		return compareIn(a, b)
+	case NotIn:
+		return !compareIn(a, b)
+	default:
+		fmt.Println("unsupported condition operator")
+		return false
 	}
-
-	v := reflect.ValueOf(data)
-
-	if v.Kind() == reflect.Map {
-		key := reflect.ValueOf(path[0])
-		if v.MapIndex(key).IsValid() {
-			return getNestedValue(v.MapIndex(key).Interface(), path[1:])
-		}
-
-		return nil
-	}
-
-	if v.Kind() == reflect.Struct {
-		fieldValue := v.FieldByName(path[0])
-		if fieldValue.IsValid() {
-			return getNestedValue(fieldValue.Interface(), path[1:])
-		}
-	}
-
-	return nil
 }
 
 func compareEqual(a, b any) bool {

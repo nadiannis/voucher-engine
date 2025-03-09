@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 )
 
@@ -46,24 +47,43 @@ func main() {
 	voucher1 := Voucher{
 		ID:   1,
 		Code: "NEWYEAR123",
-		Discount: Discount{
-			Type:      "percentage",
-			Value:     50,
-			MaxAmount: 200000,
+		Rule: Rule{
+			Conditions: []Condition{
+				MinPurchaseCondition{
+					MinAmount: 80000,
+				},
+				DateValidityCondition{
+					StartDate: parseDateTime("2025-01-01 00:00:00"),
+					EndDate:   parseDateTime("2025-07-31 23:59:59"),
+				},
+				MerchantExclusionCondition{
+					ExcludedMerchants: []int64{10, 2, 4},
+				},
+				PaymentMethodCondition{
+					AllowedPaymentMethods: []string{"bank_transfer", "virtual_account", "ewallet"},
+				},
+				ProductQuantityCondition{
+					ProductID: 2,
+					Operator:  GreaterThanOrEqual,
+					Quantity:  2,
+				},
+			},
+			Action: PercentageDiscountAction{
+				Amount:    50,
+				MaxAmount: 200000,
+			},
 		},
-		MinPurchaseAmount: 80000,
-		StartDate:         parseDateTime("2025-01-01 00:00:00"),
-		ExpiryDate:        parseDateTime("2025-07-31 23:59:59"),
-		UsageLimit:        3,
-		ExcludedMerchants: []int64{10, 2, 4},
-		PaymentMethods:    []string{"bank_transfer", "virtual_account", "ewallet"},
 	}
 
 	engine := NewRuleEngine()
+	engine.RegisterVoucher(voucher1)
 
-	output := engine.CheckEligibility(cart1, voucher1)
-	printJSON(output)
+	output, err := engine.ApplyVoucher(cart1, "NEWYEAR123")
+	if err != nil {
+		log.Println(err)
+		printJSON(output)
+		return
+	}
 
-	output = engine.CalculateDiscount(cart1, voucher1)
 	printJSON(output)
 }

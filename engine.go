@@ -1,122 +1,54 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 )
 
 type RuleEngine struct {
-	eligibilityRules []Rule
+	vouchers map[string]Voucher
 }
 
 func NewRuleEngine() *RuleEngine {
 	return &RuleEngine{
-		eligibilityRules: GenerateEligibilityRules(),
+		vouchers: make(map[string]Voucher),
 	}
 }
 
-func (e *RuleEngine) CheckEligibility(cart Cart, voucher Voucher) Output {
-	facts := map[string]any{
-		"cart":          cart,
-		"voucher":       voucher,
-		"totalPurchase": calculateTotalPurchase(cart),
-	}
-
-	for _, rule := range e.eligibilityRules {
-		if !evaluateRule(rule, facts) {
-			return Output{
-				Type:  "eligibility",
-				Value: false,
-			}
-		}
-	}
-
-	return Output{
-		Type:  "eligibility",
-		Value: true,
-	}
+func (e *RuleEngine) RegisterVoucher(voucher Voucher) {
+	e.vouchers[voucher.Code] = voucher
 }
 
-func (e *RuleEngine) CalculateDiscount(cart Cart, voucher Voucher) Output {
-	output := Output{
-		Type:  "discount",
-		Value: 0.0,
+func (e *RuleEngine) ApplyVoucher(cart Cart, voucherCode string) (output *Output, err error) {
+	voucher, exists := e.vouchers[voucherCode]
+	if !exists {
+		return nil, errors.New("voucher not found")
 	}
 
-	if eligibility := e.CheckEligibility(cart, voucher); !eligibility.Value.(bool) {
-		fmt.Println("this purchase is not eligible to use the voucher")
-		return output
+	ctx := &EvaluationContext{
+		Facts: map[string]any{
+			"cart":          cart,
+			"voucher":       voucher,
+			"totalPurchase": calculateTotalPurchase(cart),
+		},
 	}
 
-	totalPurchase := calculateTotalPurchase(cart)
-	var discount float64
-
-	switch voucher.Discount.Type {
-	case "fixed":
-		discount = voucher.Discount.Value
-
-		if discount > voucher.Discount.MaxAmount {
-			discount = voucher.Discount.MaxAmount
-		}
-
-		if discount > totalPurchase {
-			discount = totalPurchase
-		}
-	case "percentage":
-		discount = totalPurchase * voucher.Discount.Value / 100
-
-		if discount > voucher.Discount.MaxAmount {
-			discount = voucher.Discount.MaxAmount
-		}
-	default:
-		fmt.Println("unsupported discount type")
+	output = &Output{
+		Type:       voucher.Rule.Action.GetType(),
+		IsEligible: false,
+		Discount:   0.0,
 	}
 
-	output.Value = discount
-	return output
-}
-
-func evaluateRule(rule Rule, facts map[string]any) bool {
-	for _, condition := range rule.Conditions {
-		if !match(condition, facts) {
-			return false
+	for _, condition := range voucher.Rule.Conditions {
+		if !condition.Evaluate(ctx) {
+			return output, fmt.Errorf("cart does not satisfy '%v' rule condition", condition.GetType())
 		}
 	}
 
-	return true
-}
+	discount := voucher.Rule.Action.Apply(ctx)
 
-func match(condition Condition, facts map[string]any) bool {
-	fieldPath := strings.Split(condition.Field, ".")
-	operand1 := getNestedValue(facts, fieldPath)
+	output.IsEligible = true
+	output.Discount = discount
 
-	var operand2 any
-	if v, ok := condition.Value.(string); ok && strings.Contains(v, ".") {
-		refPath := strings.Split(v, ".")
-		operand2 = getNestedValue(facts, refPath)
-	} else {
-		operand2 = condition.Value
-	}
-
-	switch condition.Operator {
-	case Equal:
-		return compareEqual(operand1, operand2)
-	case NotEqual:
-		return !compareEqual(operand1, operand2)
-	case GreaterThan:
-		return compareGreaterThan(operand1, operand2)
-	case GreaterThanOrEqual:
-		return compareGreaterThanOrEqual(operand1, operand2)
-	case LessThan:
-		return compareLessThan(operand1, operand2)
-	case LessThanOrEqual:
-		return compareLessThanOrEqual(operand1, operand2)
-	case In:
-		return compareIn(operand1, operand2)
-	case NotIn:
-		return !compareIn(operand1, operand2)
-	default:
-		fmt.Println("unsupported condition operator")
-		return false
-	}
+	return output, nil
 }
