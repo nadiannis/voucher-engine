@@ -36,19 +36,19 @@ func (e *RuleEngine) ApplyVoucher(cart Cart, voucherCode string) (output *Output
 	output = &Output{
 		Type:       voucher.Rule.Action.GetType(),
 		IsEligible: false,
-		Discount:   0.0,
+		Value:      nil,
 	}
 
 	for _, condition := range voucher.Rule.Conditions {
 		if !condition.Evaluate(ctx) {
-			return output, fmt.Errorf("cart does not satisfy '%v' rule condition", condition.GetType())
+			return output, fmt.Errorf("cart '%v' does not satisfy '%v' rule condition", cart.ID, condition.GetType())
 		}
 	}
 
-	discount := voucher.Rule.Action.Apply(ctx)
+	actionResult := voucher.Rule.Action.Apply(ctx)
 
 	output.IsEligible = true
-	output.Discount = discount
+	output.Value = actionResult
 
 	return output, nil
 }

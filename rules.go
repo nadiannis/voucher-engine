@@ -8,7 +8,7 @@ type Rule struct {
 type Output struct {
 	Type       ActionType `json:"type"`
 	IsEligible bool       `json:"is_eligible"`
-	Discount   float64    `json:"discount"`
+	Value      any        `json:"value"`
 }
 
 type EvaluationContext struct {

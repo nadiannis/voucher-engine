@@ -62,11 +62,6 @@ func main() {
 				PaymentMethodCondition{
 					AllowedPaymentMethods: []string{"bank_transfer", "virtual_account", "ewallet"},
 				},
-				ProductQuantityCondition{
-					ProductID: 2,
-					Operator:  GreaterThanOrEqual,
-					Quantity:  2,
-				},
 			},
 			Action: PercentageDiscountAction{
 				Amount:    50,
@@ -75,10 +70,48 @@ func main() {
 		},
 	}
 
+	voucher2 := Voucher{
+		ID:   1,
+		Code: "BUY2GET1",
+		Rule: Rule{
+			Conditions: []Condition{
+				DateValidityCondition{
+					StartDate: parseDateTime("2025-02-01 00:00:00"),
+					EndDate:   parseDateTime("2025-08-31 23:59:59"),
+				},
+				MerchantExclusionCondition{
+					ExcludedMerchants: []int64{3, 7},
+				},
+				PaymentMethodCondition{
+					AllowedPaymentMethods: []string{"virtual_account", "ewallet"},
+				},
+				ProductQuantityCondition{
+					ProductID: 2,
+					Operator:  GreaterThanOrEqual,
+					Quantity:  2,
+				},
+			},
+			Action: FreeItemAction{
+				ProductID: 2,
+				Quantity:  1,
+			},
+		},
+	}
+
 	engine := NewRuleEngine()
 	engine.RegisterVoucher(voucher1)
+	engine.RegisterVoucher(voucher2)
 
 	output, err := engine.ApplyVoucher(cart1, "NEWYEAR123")
+	if err != nil {
+		log.Println(err)
+		printJSON(output)
+		return
+	}
+
+	printJSON(output)
+
+	output, err = engine.ApplyVoucher(cart1, "BUY2GET1")
 	if err != nil {
 		log.Println(err)
 		printJSON(output)
