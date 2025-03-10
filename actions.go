@@ -34,8 +34,7 @@ func (a PercentageDiscountAction) Apply(ctx *EvaluationContext) any {
 }
 
 type FixedDiscountAction struct {
-	Amount    float64
-	MaxAmount float64
+	Amount float64
 }
 
 func (a FixedDiscountAction) GetType() ActionType {
@@ -44,10 +43,6 @@ func (a FixedDiscountAction) GetType() ActionType {
 
 func (a FixedDiscountAction) Apply(ctx *EvaluationContext) any {
 	discount := a.Amount
-
-	if a.MaxAmount > 0 && discount > a.MaxAmount {
-		discount = a.MaxAmount
-	}
 
 	totalPurchase := calculateTotalPurchase(ctx.Facts["cart"].(Cart))
 	if discount > totalPurchase {
